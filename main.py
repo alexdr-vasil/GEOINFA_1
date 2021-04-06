@@ -177,21 +177,19 @@ def get_prognose(T, time):
     Elevation= asin(po / L)
     Elevation = to_deg(Elevation)
 
-    N = 0
-    if Elevation >= 0:
-        xp, yp, zp = projekt(x0, y0, z0, x, y, z)
+    xp, yp, zp = projekt(x0, y0, z0, x, y, z)
 
-        xp, yp, zp = xp - x0, yp - y0, zp - z0
-        Lenp = (xp ** 2 + yp ** 2 + zp ** 2) ** 0.5
+    xp, yp, zp = xp - x0, yp - y0, zp - z0
+    Lenp = (xp ** 2 + yp ** 2 + zp ** 2) ** 0.5
 
-        N = acos((xi * xp + yi * yp + zi * zp) / (Leni * Lenp))
-        N = to_deg(N)
+    N = acos((xi * xp + yi * yp + zi * zp) / (Leni * Lenp))
+    N = to_deg(N)
 
-        E = acos((xj * xp + yj * yp + zj * zp) / (Lenj * Lenp))
-        E = to_deg(E)
+    E = acos((xj * xp + yj * yp + zj * zp) / (Lenj * Lenp))
+    E = to_deg(E)
 
-        if E > 90:
-            N = -N + 360
+    if E > 90:
+        N = -N + 360
 
     Azimut = N
     # ВЫВОД ВИДИМЫХ ТОЧЕК НА ЭКРАН

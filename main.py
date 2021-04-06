@@ -226,7 +226,7 @@ single_elevation = []
 single_azimut = []
 
 for i in range(len(elevation)):
-    if elevation[i] > 5:
+    if elevation[i] > 0:
         single_elevation.append(elevation[i])
         single_azimut.append(to_rad(azimut[i]))
     else:

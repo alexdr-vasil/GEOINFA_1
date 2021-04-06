@@ -14,8 +14,8 @@ month_list = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 Re = 6378.137
 
 # КООРДИНАТЫ ЛК
-lon_0 = 55.93013
-lat_0 = 37.51832
+LATITUDE = 55.93013
+LONGITUDE = 37.51832
 h = 0.198
 
 
@@ -57,6 +57,7 @@ def minus_3_hours(T):
             T[2] = month_list[T[1] - 1]
     return T
 
+
 # СТРОКУ, ВВОДИМУЮ С КЛАВИАТУРЫ, ПРЕВРАЩАЕМ В СПИСОК ЦЕЛОЧИСЛЕННЫХ ПЕРЕМЕННЫХ:
 
 def string_to_list(str):
@@ -78,24 +79,6 @@ def to_deg(phi):
     return phi / pi * 180
 
 
-# ПЕРЕХОД ИЗ ПОЛЯРНОЙ СК В ДЕКАРТОВУ
-def from_polar(r, lon, lat):
-    x = r * cos(lon) * cos(lat)
-    y = r * sin(lon) * cos(lat)
-    z = r * sin(lat)
-    return x, y, z
-
-
-# ДЛИНА ВЕКТОРА
-def module(x, y, z):
-    return (x ** 2 + y ** 2 + z ** 2) ** 0.5
-
-
-# СКАЛЯРНОЕ ПРОИЗВЕДЕНИЕ ВЕКТОРОВ
-def scale(x, y, z, a, b, c):
-    return x * a + y * b + z * c
-
-
 # НАПРАВЛЕНИЕ НА СЕВЕР
 def north(x, y, z):
     D = -x ** 2 - y ** 2 - z ** 2
@@ -105,17 +88,36 @@ def north(x, y, z):
     return x_north, y_north, z_north
 
 
-# КООРДИНАТЫ X, Y, Z НАШЕГО МЕСТОПОЛОЖЕНИЯ
-lon_0 = to_rad(lon_0)
-lat_0 = to_rad(lat_0)
-x0, y0, z0 = from_polar(Re + h, lon_0, lat_0)
+def Po(a, b, c, a1, b1, c1):
+    d = -a ** 2 - b ** 2 - c ** 2
+    dif = (a * a1 + b * b1 + c * c1 + d) / ((a ** 2 + b ** 2 + c ** 2) ** 0.5)
+    return dif
+
+
+def projekt(x0, y0, z0, xc, yc, zc):
+    t = (x0 ** 2 - x0 * xc + y0 ** 2 - y0 * yc + z0 ** 2 - z0 * zc) / (x0 ** 2 + y0 ** 2 + z0 ** 2)
+    xp = xc + t * x0
+    yp = yc + t * y0
+    zp = zc + t * z0
+    return xp, yp, zp
+
+
+# КООРДИНАТЫ X0, Y0, Z0 НАШЕГО МЕСТОПОЛОЖЕНИЯ
+lat = to_rad(LATITUDE)
+lon = to_rad(LONGITUDE)
+r0 = Re + h
+x0 = r0 * cos(lat) * cos(lon)
+y0 = r0 * sin(lon) * cos(lat)
+z0 = r0 * sin(lat)
 
 # КООРДИНАТЫ ВЕКТОРА НАПРАВЛЕНИЯ НА СЕВЕР В НАШЕЙ ПЛОСКОСТИ - i
 xn, yn, zn = north(x0, y0, z0)
 xi, yi, zi = xn - x0, yn - y0, zn - z0
+Leni = (xi ** 2 + yi ** 2 + zi ** 2) ** 0.5
 
 # КООРДИНАТЫ ВЕКТОРА НАПРАВЛЕНИЯ НА ВОСТОК В НАШЕЙ ПЛОСКОСТИ - j
 xj, yj, zj = yi * z0 - zi * y0, -(xi * z0 - x0 * zi), xi * y0 - yi * x0
+Lenj = (xj ** 2 + yj ** 2 + zj ** 2) ** 0.5
 
 # ВВОД ВРЕМЕНИ НАЧАЛА И КОНЦА ПРОГНОЗА
 print("Enter time start: YYYY MM DD HH mm   (f. e. '2021 03 01 08 05' - The 1st of March 2021, 8:05 am)")
@@ -156,61 +158,46 @@ def get_prognose(T, time):
     lon, lat, alt = orb.get_lonlatalt(T)
 
     # ПЕРЕВОД В РАДИАНЫ + ПРИБАВЛЕНИЕ РАДИУСА ЗЕМЛИ
-    a = to_rad(lon)
-    b = to_rad(lat)
+    lon = to_rad(lon)
+    lat = to_rad(lat)
     r = alt + Re
 
     # НАХОЖДЕНИЕ КООРДИНАТ СПУТНИКА
-    x, y, z = from_polar(r, a, b)
+    x = r * cos(lat) * cos(lon)
+    y = r * sin(lon) * cos(lat)
+    z = r * sin(lat)
+
     Lx.append(x)
     Ly.append(y)
     Lz.append(z)
 
+    po = Po(x0, y0, z0, x, y, z)
 
-    # КАСАТЕЛЬНАЯ ПЛОСКОСТЬ К ПОВЕРХНОСТИ ЗЕМЛИ
-    A = x0
-    B = y0
-    C = z0
-    D = -x0 ** 2 - y0 ** 2 - z0 ** 2
-
-    # РАССТОЯНИЕ ОТ ТОЧКИ ДО ПЛОСКОСТИ
-    Po = (A * x + B * y + C * z + D) / ((A ** 2 + B ** 2 + C ** 2) ** 0.5)
-
-    # ДЛИНА ВЕКТОРА ОТ НАШЕГО ПОЛОЖЕНИЯ ДО СПУТНИКА
-    r1 = module(x - x0, y - y0, z - z0)
-
-    # ЭЛЕВАЦИЯ
-    Elevation = asin(scale(x-x0, y-y0, z-z0, x0, y0, z0)/r1/module(x0, y0, z0))
+    L = ((x - x0) ** 2 + (y - y0) ** 2 + (z - z0) ** 2) ** 0.5
+    Elevation= asin(po / L)
     Elevation = to_deg(Elevation)
 
-    # ПРОЕКЦИЯ ТОЧКИ СПУТНИКА НА КАСАТЕЛЬНУЮ ПЛОСКОСТЬ
-    t = (x0 ** 2 - x0 * x + y0 ** 2 - y0 * y + z0 ** 2 - z0 * z) / (x0 ** 2 + y0 ** 2 + z0 ** 2)
-    xp = x + t*x0
-    yp = y + t*y0
-    zp = z + t*z0
+    N = 0
+    if Elevation >= 0:
+        xp, yp, zp = projekt(x0, y0, z0, x, y, z)
 
-    # ПЕРЕХОД ОТ ТОЧКИ К ВЕКТОРУ, СОЕДИНЯЮЩЕМУ НАШУ ТОЧКУ С ТОЧКОЙ ПРОЕКЦИИ
-    xp = xp - x0
-    yp = yp - y0
-    zp = zp - z0
+        xp, yp, zp = xp - x0, yp - y0, zp - z0
+        Lenp = (xp ** 2 + yp ** 2 + zp ** 2) ** 0.5
 
-    # УГОЛ МЕЖДУ НАПРАВЛЕНИЕМ НА СЕВЕР И ВЕКТОРОМ ПРОЕКЦИИ
-    N = acos(scale(xp, yp, zp, xi, yi, zi) / module(xp, yp, zp) / module(xi, yi, zi))
-    N = to_deg(N)
+        N = acos((xi * xp + yi * yp + zi * zp) / (Leni * Lenp))
+        N = to_deg(N)
 
-    # УГОЛ МЕЖДУ НАПРАВЛЕНИЕМ НА ВОСТОК И ВЕКТОРОМ ПРОЕКЦИИ
-    E = acos(scale(xp, yp, zp, xj, yj, zj) / module(xp, yp, zp) / module(xj, yj, zj))
-    E = to_deg(E)
+        E = acos((xj * xp + yj * yp + zj * zp) / (Lenj * Lenp))
+        E = to_deg(E)
 
-    # ПОПРАВКА С УЧЕТОМ НАПРАВЛЕНИЯ НА ВОСТОК до 360 градусов
-    if E > 90:
-        N = 360 - N
+        if E > 90:
+            N = -N + 360
 
-    # АЗИМУТ
     Azimut = N
-
-    if Elevation>10:
-        print(to_datetime(time), " 0El:  ", Elevation, "  Az: ", Azimut)
+    # ВЫВОД ВИДИМЫХ ТОЧЕК НА ЭКРАН
+    if Elevation > 5:
+        print(to_datetime(time), " Elevation:  ", Elevation, "  Azimut: ", Azimut)
+    # ЗАПИСТЬ ЭЛЕВАЦИИ И АЗИМУТА В ОБЩИЕ СПИСКИ
     elevation.append(Elevation)
     azimut.append(Azimut)
 
@@ -227,6 +214,7 @@ while T_work != T_lend:
 # ГРАФИК ДВИЖЕНИЯ СПУТНИКА
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
+ax.scatter(x0, y0, z0, color='red')
 ax.plot(Lx, Ly, Lz)
 fig.set_size_inches(7, 7)
 plt.show()
@@ -236,12 +224,11 @@ plt.show()
 elevation_list = []
 azimut_list = []
 
-
 single_elevation = []
 single_azimut = []
 
 for i in range(len(elevation)):
-    if elevation[i] > 0:
+    if elevation[i] > 5:
         single_elevation.append(elevation[i])
         single_azimut.append(to_rad(azimut[i]))
     else:
@@ -251,12 +238,12 @@ for i in range(len(elevation)):
         single_elevation = []
         single_azimut = []
 
-
 # ПОЛЯРНЫЙ ГРАФИК
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='polar')
 ax.set_theta_zero_location('N')
+ax.set_theta_direction(-1)
 ax.set_rlim(bottom=90, top=0)
 ax.set_theta_direction(-1)
 for phi, theta in zip(azimut_list, elevation_list):
